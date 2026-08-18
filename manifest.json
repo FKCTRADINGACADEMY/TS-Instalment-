@@ -1,7 +1,7 @@
 {
-  "name": "TS Instalment — Installment Ledger",
-  "short_name": "TS Instalment",
-  "description": "TS Instalment ledger app — manage parties, stock, payments and expenses.",
+  "name": "TS BUSINESS — Installment Ledger",
+  "short_name": "TS BUSINESS",
+  "description": "TS BUSINESS ledger app — manage parties, stock, payments and expenses.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
