@@ -3459,10 +3459,38 @@ function setupInactivityWatch(){
 
 document.addEventListener('DOMContentLoaded', initAuth);
 
-/* ---- PWA: register service worker (offline cache + installable app) ---- */
+/* ---- PWA: register service worker (offline cache + installable app) ----
+   Also auto-detects a newer version in the background and activates +
+   reloads it within seconds, instead of waiting for the app to be
+   closed and reopened. */
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW register failed:', err));
+    navigator.serviceWorker.register('sw.js').then((reg)=>{
+      // Check for an updated sw.js/app shell right away, then periodically.
+      reg.update().catch(()=>{});
+      setInterval(()=>reg.update().catch(()=>{}), 60*1000);
+
+      // A new worker was found and finished downloading — tell it to
+      // activate immediately instead of waiting for all tabs to close.
+      reg.addEventListener('updatefound', ()=>{
+        const newWorker = reg.installing;
+        if(!newWorker) return;
+        newWorker.addEventListener('statechange', ()=>{
+          if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            newWorker.postMessage('SKIP_WAITING');
+          }
+        });
+      });
+    }).catch(err=>console.warn('SW register failed:', err));
+
+    // Once the new worker takes control, reload once to pick up the
+    // latest files everywhere on the page.
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(refreshed) return;
+      refreshed = true;
+      window.location.reload();
+    });
   });
 }
 </script>
