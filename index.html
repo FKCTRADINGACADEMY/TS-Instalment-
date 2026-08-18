@@ -195,8 +195,11 @@
   #cardReceipt .cr-box .cr-line.total, #invoiceReceipt .cr-box .cr-line.total{color:#1e6f5c; font-weight:700;}
   #invoiceReceipt .cr-box .cr-line.sub{border-top:1px dashed #e4ddcf; margin-top:4px; padding-top:8px;}
   #cardReceipt .cr-desc, #invoiceReceipt .cr-desc{font-size:11.5px; margin-top:10px;}
-  #cardReceipt .cr-sign, #invoiceReceipt .cr-sign{margin-top:16px; float:right; text-align:center; border:1px solid #e4ddcf; border-radius:10px; padding:8px 16px 6px;}
-  #cardReceipt .cr-sign .cr-scribble, #invoiceReceipt .cr-sign .cr-scribble{display:block; margin:0 auto 2px;}
+  #cardReceipt .cr-sign-wrap, #invoiceReceipt .cr-sign-wrap{margin-top:16px; float:right; display:flex; align-items:flex-end; gap:8px;}
+  #cardReceipt .cr-sign-stamp, #invoiceReceipt .cr-sign-stamp{width:64px; height:64px; border-radius:50%; border:2px solid #1e6f5c; display:flex; align-items:center; justify-content:center; text-align:center; opacity:.85; transform:rotate(-8deg); flex-shrink:0;}
+  #cardReceipt .cr-sign-stamp span, #invoiceReceipt .cr-sign-stamp span{font-size:8px; font-weight:700; color:#1e6f5c; line-height:1.15; letter-spacing:.3px;}
+  #cardReceipt .cr-sign, #invoiceReceipt .cr-sign{text-align:center; border:1px solid #e4ddcf; border-radius:10px; padding:8px 16px 6px;}
+  #cardReceipt .cr-sign .cr-scribble, #invoiceReceipt .cr-sign .cr-scribble{display:block; margin:0 auto 2px; width:80px !important; height:auto;}
   #cardReceipt .cr-sign .cr-shopname, #invoiceReceipt .cr-sign .cr-shopname{font-size:10px; opacity:.6; border-top:1px solid #cbbfa0; padding-top:4px; margin-top:2px;}
   #cardReceipt .cr-clear, #invoiceReceipt .cr-clear{clear:both;}
   #cardReceipt .cr-note, #invoiceReceipt .cr-note{font-size:10.5px; color:#8a4a1f; background:#fbeee0; border:1px dashed #d9a66c; border-radius:8px; padding:6px 8px; margin-top:10px;}
@@ -692,6 +695,8 @@
   <div class="inner">
     <button data-tab="dashboard" onclick="showView('dashboard')">📊<span>Dashboard</span></button>
     <button data-tab="parties" onclick="goToPartiesFilter('all')">👥<span>Parties</span></button>
+    <button data-tab="reports" onclick="showView('reports')">📄<span>Report</span></button>
+    <button data-tab="calculator" onclick="showView('calculator')">🧮<span>Calculator</span></button>
     <button data-tab="more" onclick="openSidebar()">☰<span>Menu</span></button>
   </div>
 </nav>
@@ -1123,7 +1128,7 @@ function computeTotals(){
   // Baseline reset: everything up to STATS_RESET_DATE collapses into the
   // fixed baseline amount; only payments dated AFTER that count on top.
   const totalCollected = STATS_RESET_RECOVERY + payments
-    .filter(p=>receivableIds.has(p.partyId) && p.date > STATS_RESET_DATE)
+    .filter(p=>receivableIds.has(p.partyId) && p.date >= STATS_RESET_DATE)
     .reduce((s,p)=>s+Number(p.amount||0),0);
   // Monthly Recovery = collection for the CURRENT calendar month only
   // (resets automatically each new month). If the reset month is the
@@ -1131,7 +1136,7 @@ function computeTotals(){
   // within this same month; older months never include it.
   const currentMonthKey = today.slice(0,7);
   let totalCollectedThisMonth = payments
-    .filter(p=>receivableIds.has(p.partyId) && monthKeyOf(p.date)===currentMonthKey && p.date > STATS_RESET_DATE)
+    .filter(p=>receivableIds.has(p.partyId) && monthKeyOf(p.date)===currentMonthKey && p.date >= STATS_RESET_DATE)
     .reduce((s,p)=>s+Number(p.amount||0),0);
   if(currentMonthKey === STATS_RESET_DATE.slice(0,7)) totalCollectedThisMonth += STATS_RESET_RECOVERY;
   const todayCollection = payments.filter(p=>p.date===today && receivableIds.has(p.partyId)).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -1707,9 +1712,12 @@ function buildCardReceiptHTML(partyId, paymentId){
     </div>
     <div class="cr-desc"><b>Transaction Description :</b> received via ${payment?payment.method:'-'}</div>
     ${currentBalance>0 ? `<div class="cr-note">⚠️ Agli qist ki akhri tareekh (grace) se pehle payment na hui to ${OVERDUE_CHARGE_PERCENT}% overdue charges lagenge.</div>` : ''}
-    <div class="cr-sign">
-      ${SIGNATURE_SVG}
-      <div class="cr-shopname">TS BUSINESS</div>
+    <div class="cr-sign-wrap">
+      <div class="cr-sign-stamp"><span>TS<br>BUSINESS</span></div>
+      <div class="cr-sign">
+        ${SIGNATURE_SVG}
+        <div class="cr-shopname">TS BUSINESS</div>
+      </div>
     </div>
     <div class="cr-clear"></div>
     <div class="cr-footer">
@@ -1792,9 +1800,12 @@ function buildInvoiceHTML(partyId){
     </div>
     <div class="cr-desc"><b>Installment Plan:</b> ${count} × ${party.frequency||'Monthly'} qist — ${fmtMoney(party.installmentAmount||0)} har qist</div>
     <div class="cr-note">⚠️ Har qist ki akhri tareekh (grace, due date se ${OVERDUE_GRACE_DAYS} din baad) se pehle payment na hui to ${OVERDUE_CHARGE_PERCENT}% overdue charges lagenge.</div>
-    <div class="cr-sign">
-      ${SIGNATURE_SVG}
-      <div class="cr-shopname">TS BUSINESS</div>
+    <div class="cr-sign-wrap">
+      <div class="cr-sign-stamp"><span>TS<br>BUSINESS</span></div>
+      <div class="cr-sign">
+        ${SIGNATURE_SVG}
+        <div class="cr-shopname">TS BUSINESS</div>
+      </div>
     </div>
     <div class="cr-clear"></div>
     <div class="cr-footer">
@@ -2249,7 +2260,7 @@ const MORE_SUBVIEWS = ['more','accounts','calculator','cards','backup','stock','
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  const navName = MORE_SUBVIEWS.includes(name) ? 'more' : name;
+  const navName = (MORE_SUBVIEWS.includes(name) && name!=='reports' && name!=='calculator') ? 'more' : name;
   document.querySelectorAll('nav.bottom button').forEach(b=>b.classList.toggle('active', b.dataset.tab===navName));
   if(name==='dashboard') renderDashboard();
   if(name==='parties') renderPartiesList();
