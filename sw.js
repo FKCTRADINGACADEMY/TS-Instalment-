@@ -6,7 +6,7 @@
 
 /* Bump this version string every time you re-upload index.html —
    it forces old caches to be wiped on activate. */
-const CACHE_NAME = 'ts-instalment-v2';
+const CACHE_NAME = 'ts-instalment-v3';
 const APP_SHELL = [
   './',
   './index.html',
