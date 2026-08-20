@@ -132,6 +132,8 @@
   .party-item .pname{font-weight:600; font-size:14px;}
   .party-item .pmeta{font-size:12px; opacity:.6; margin-top:2px;}
   .stamp{font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; border:2px solid; text-transform:uppercase; letter-spacing:.04em; transform:rotate(-6deg); display:inline-block; white-space:nowrap;}
+  /* Plain outstanding amount — bold text only, no box/border/uppercase/tilt. */
+  .stamp.plain{border:none; padding:0; background:none; text-transform:none; letter-spacing:normal; transform:none; font-size:15px; font-weight:800;}
   .searchbar{display:flex; gap:8px; margin-bottom:12px;}
   .searchbar input{flex:1;}
   .ledger-row{display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13px;}
@@ -196,14 +198,14 @@
   #invoiceReceipt .cr-box .cr-line.sub{border-top:1px dashed #e4ddcf; margin-top:4px; padding-top:8px;}
   #cardReceipt .cr-desc, #invoiceReceipt .cr-desc{font-size:11.5px; margin-top:10px;}
   #cardReceipt .cr-sign-wrap, #invoiceReceipt .cr-sign-wrap{margin-top:16px; float:right; display:flex; align-items:flex-end; gap:8px;}
-  #cardReceipt .cr-sign-stamp, #invoiceReceipt .cr-sign-stamp{width:64px; height:64px; border-radius:50%; object-fit:cover; opacity:.9; transform:rotate(-8deg); flex-shrink:0; box-shadow:0 0 0 1px rgba(30,111,92,.15);}
+  #cardReceipt .cr-sign-stamp, #invoiceReceipt .cr-sign-stamp{width:64px; height:64px; border-radius:50%; object-fit:cover; opacity:.9; transform:rotate(-8deg); flex-shrink:0; mix-blend-mode:multiply;}
   #cardReceipt .cr-sign, #invoiceReceipt .cr-sign{text-align:center; border:1px solid #e4ddcf; border-radius:10px; padding:8px 16px 6px;}
   #cardReceipt .cr-sign .cr-scribble, #invoiceReceipt .cr-sign .cr-scribble{display:block; margin:0 auto 2px; width:80px !important; height:auto;}
   #cardReceipt .cr-sign .cr-shopname, #invoiceReceipt .cr-sign .cr-shopname{font-size:10px; opacity:.6; border-top:1px solid #cbbfa0; padding-top:4px; margin-top:2px;}
   #cardReceipt .cr-clear, #invoiceReceipt .cr-clear{clear:both;}
   #cardReceipt .cr-note, #invoiceReceipt .cr-note{font-size:10.5px; color:#8a4a1f; background:#fbeee0; border:1px dashed #d9a66c; border-radius:8px; padding:6px 8px; margin-top:10px;}
   #cardReceipt .cr-footer, #invoiceReceipt .cr-footer{margin-top:16px; padding-top:10px; border-top:1px dashed #e4ddcf; display:flex; flex-direction:column; align-items:center; gap:4px;}
-  #cardReceipt .cr-stamp, #invoiceReceipt .cr-stamp{width:56px; height:56px; object-fit:cover; border-radius:50%; opacity:.82; transform:rotate(-8deg); box-shadow:0 0 0 2px rgba(30,111,92,.35);}
+  #cardReceipt .cr-stamp, #invoiceReceipt .cr-stamp{width:56px; height:56px; object-fit:cover; border-radius:50%; opacity:.82; transform:rotate(-8deg); mix-blend-mode:multiply;}
   #cardReceipt .cr-credit, #invoiceReceipt .cr-credit{font-size:9.5px; opacity:.45; text-align:center;}
   #invoiceReceipt .cr-inv-table{width:100%; border-collapse:collapse; font-size:12px; margin-top:4px;}
   #invoiceReceipt .cr-inv-table td{padding:5px 0;}
@@ -866,7 +868,19 @@ function ensureDefaultAccounts(){
 }
 
 function newId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+/* Local calendar date as YYYY-MM-DD — NEVER use toISOString() for this.
+   toISOString() converts to UTC first, and Pakistan is UTC+5, so any local
+   date rolls back to the previous day once converted to UTC. A schedule
+   that keeps re-using its own previous due date (buildSchedule/
+   computeNextDue) would then lose a day on every single step — exactly the
+   "17 Sept → 16 Oct → 15 Nov…" drift seen in the installment schedule. This
+   helper reads the date fields directly, in local time, with no UTC
+   conversion, so the day-of-month stays fixed on every repeat. */
+function toLocalDateStr(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + dd;
+}
+function todayStr(){ return toLocalDateStr(new Date()); }
 function fmtMoney(n){ const v = Math.round(Number(n)||0); return 'Rs. ' + v.toLocaleString('en-PK'); }
 function fmtDate(d){
   if(!d) return '-';
@@ -1176,7 +1190,7 @@ function addInterval(dateStr, frequency){
   if(frequency === 'Daily') d.setDate(d.getDate()+1);
   else if(frequency === 'Weekly') d.setDate(d.getDate()+7);
   else d.setMonth(d.getMonth()+1);
-  return d.toISOString().slice(0,10);
+  return toLocalDateStr(d);
 }
 function partyPaymentsSorted(partyId){
   return payments.filter(p=>p.partyId===partyId).sort((a,b)=>b.date.localeCompare(a.date));
@@ -1193,7 +1207,7 @@ const OVERDUE_CHARGE_PERCENT = 5;
 function graceDueDate(dueDate){
   const d = new Date(dueDate + 'T00:00:00');
   d.setDate(d.getDate() + OVERDUE_GRACE_DAYS);
-  return d.toISOString().slice(0,10);
+  return toLocalDateStr(d);
 }
 function buildSchedule(party){
   // Future qist schedule — start date se lekar (total - advance) poora wasool hone tak.
@@ -1222,7 +1236,7 @@ function googleCalendarLink(party, dueDate){
   const start = dueDate.replace(/-/g,'');
   const endDt = new Date(dueDate + 'T00:00:00');
   endDt.setDate(endDt.getDate()+1);
-  const end = endDt.toISOString().slice(0,10).replace(/-/g,'');
+  const end = toLocalDateStr(endDt).replace(/-/g,'');
   const text = encodeURIComponent('Installment Recovery — ' + party.name + ' (' + (party.item||'Installment') + ')');
   const details = encodeURIComponent('Party: '+party.name+'\nItem: '+(party.item||'-')+'\nQist Amount: '+fmtMoney(party.installmentAmount||0)+'\nContact: '+(party.phone||'-'));
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+text+'&dates='+start+'/'+end+'&details='+details;
@@ -2185,9 +2199,9 @@ function downloadDailyCSV(){
 function downloadAllPartyCSV(){
   const rows = parties.map(p=>{
     const b = partyBalance(p.id);
-    return { Name:p.name, Phone:p.phone||'', Item:p.item||'', Total:p.totalAmount, Recovery:b.totalPaid, Outstanding:b.balance, Status: b.balance<=0?'Paid':'Pending' };
+    return { Name:p.name, Phone:p.phone||'', Item:p.item||'', Total:p.totalAmount, Recovery:b.totalPaid, Outstanding:b.balance, Status: b.balance<=0?'Paid':'Pending', DateAdded: p.dateAdded ? fmtDate(p.dateAdded) : '' };
   });
-  exportCSV(rows, 'all-parties-'+todayStr()+'.csv', ['Naam','Phone','Item','Total','Recovery','Outstanding','Status']);
+  exportCSV(rows, 'all-parties-'+todayStr()+'.csv', ['Naam','Phone','Item','Total','Recovery','Outstanding','Status','DateAdded']);
 }
 function downloadPartyCSV(partyId){
   const party = parties.find(p=>p.id===partyId);
@@ -2223,6 +2237,7 @@ function downloadPartyPDF(partyId){
   if(party.phone) doc.text('Phone: ' + party.phone, 14, 56);
   doc.text('Item: ' + (party.item||'-'), 14, party.phone?62:56);
   let y0 = party.phone?70:64;
+  if(party.dateAdded){ doc.text('Party Added: ' + fmtDate(party.dateAdded), 14, y0); y0 += 6; }
   if(party.price != null){
     const markupAmount = party.price * (party.markupPercent||0) / 100;
     doc.text('Payment (Price): ' + fmtMoney(party.price) + '   +Markup(' + (party.markupPercent||0) + '%): ' + fmtMoney(markupAmount), 14, y0);
@@ -2701,13 +2716,14 @@ function renderPartiesList(){
     if(b.overpaid>0) stampHtml = `<span class="stamp" style="color:var(--gold); border-color:var(--gold);">Extra ${fmtMoney(b.overpaid)}</span>`;
     else if(b.balance<=0) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">${payable?'Ada Ho Gaya':'Paid'}</span>`;
     else if(payable) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">Dena ${fmtMoney(b.balance)}</span>`;
-    else stampHtml = `<span class="stamp" style="color:var(--brick); border-color:var(--brick);">Outstanding ${fmtMoney(b.balance)}</span>`;
+    else stampHtml = `<span class="stamp plain" style="color:var(--brick);">${fmtMoney(b.balance)}</span>`;
     return `<div class="party-item" onclick="openParty(${p.id})">
       <div class="row-between" style="align-items:flex-start;">
         <div>
           <div class="pname">${p.name}</div>
           <div class="pmeta">${p.item||''} · ${fmtMoney(p.totalAmount)}</div>
           ${p.phone ? `<div class="pmeta">📞 ${p.phone}</div>` : ''}
+          ${p.dateAdded ? `<div class="pmeta">🗓️ Party add ki: ${fmtDate(p.dateAdded)}</div>` : ''}
         </div>
         <div style="display:flex; align-items:flex-start; gap:8px;">
           ${p.atRisk ? `<span class="stamp" style="color:var(--brick); border-color:var(--brick);">🚩 At Risk</span>` : ''}
@@ -2738,7 +2754,7 @@ function renderPartyDetail(id){
   if(bal.overpaid>0) stampHtml = `<span class="stamp" style="color:var(--gold); border-color:var(--gold);">Extra ${fmtMoney(bal.overpaid)}</span>`;
   else if(bal.balance<=0) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">${payable?'Ada Ho Gaya':'Paid'}</span>`;
   else if(payable) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">I Owe ${fmtMoney(bal.balance)}</span>`;
-  else stampHtml = `<span class="stamp" style="color:var(--brick); border-color:var(--brick);">Outstanding ${fmtMoney(bal.balance)}</span>`;
+  else stampHtml = `<span class="stamp plain" style="color:var(--brick);">${fmtMoney(bal.balance)}</span>`;
 
   const scheduleRows = schedule.map(r => `
     <tr>
@@ -2824,7 +2840,7 @@ function renderPartyDetail(id){
       <button class="btn ${party.autoReminder?'btn-gold':'btn-outline-teal'} btn-sm btn-block" style="margin-top:8px;" onclick="toggleAutoReminder(${party.id})">
         ${party.autoReminder ? '🔔 Auto-Reminder: ON (baqaya clear hone tak har qist par yaad dilayega)' : '🔕 Schedule Auto-Reminder'}
       </button>
-      <div style="font-size:11px; opacity:.55; margin-top:6px;">You'll get a notification 1 day before and on the due date. Tapping it opens a pre-written SMS — just tap Send.</div>` : ''}
+      <div style="font-size:11px; opacity:.55; margin-top:6px;">Aapko due date se 1 din pehle aur due date par notification milega. Tap karne par pehle se likha SMS khulega — bas Send dabana hai.</div>` : ''}
     </div>` : ''}
 
     <div class="card">
@@ -2943,7 +2959,7 @@ function renderWeekBarChart(){
   const days = [];
   for(let i=6;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
-    days.push(d.toISOString().slice(0,10));
+    days.push(toLocalDateStr(d));
   }
   const receivableIds = new Set(parties.filter(p=>!isPayable(p)).map(p=>p.id));
   const payableIds = new Set(parties.filter(p=>isPayable(p)).map(p=>p.id));
