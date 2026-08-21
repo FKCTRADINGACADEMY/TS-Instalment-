@@ -197,9 +197,9 @@
   #cardReceipt .cr-box .cr-line.total, #invoiceReceipt .cr-box .cr-line.total{color:#1e6f5c; font-weight:700;}
   #invoiceReceipt .cr-box .cr-line.sub{border-top:1px dashed #e4ddcf; margin-top:4px; padding-top:8px;}
   #cardReceipt .cr-desc, #invoiceReceipt .cr-desc{font-size:11.5px; margin-top:10px;}
-  #cardReceipt .cr-sign-wrap, #invoiceReceipt .cr-sign-wrap{margin-top:16px; float:right; display:flex; align-items:flex-end; gap:8px;}
-  #cardReceipt .cr-sign-stamp, #invoiceReceipt .cr-sign-stamp{width:64px; height:64px; border-radius:50%; object-fit:cover; opacity:.9; transform:rotate(-8deg); flex-shrink:0; mix-blend-mode:multiply;}
-  #cardReceipt .cr-sign, #invoiceReceipt .cr-sign{text-align:center; border:1px solid #e4ddcf; border-radius:10px; padding:8px 16px 6px;}
+  #cardReceipt .cr-sign-wrap, #invoiceReceipt .cr-sign-wrap{margin-top:16px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px;}
+  #cardReceipt .cr-sign-stamp, #invoiceReceipt .cr-sign-stamp{width:72px; height:72px; border-radius:50%; object-fit:cover; opacity:.95; transform:rotate(-8deg); flex-shrink:0; mix-blend-mode:multiply; background:transparent;}
+  #cardReceipt .cr-sign, #invoiceReceipt .cr-sign{text-align:center; border:1px solid #e4ddcf; border-radius:10px; padding:8px 16px 6px; margin-left:auto;}
   #cardReceipt .cr-sign .cr-scribble, #invoiceReceipt .cr-sign .cr-scribble{display:block; margin:0 auto 2px; width:80px !important; height:auto;}
   #cardReceipt .cr-sign .cr-shopname, #invoiceReceipt .cr-sign .cr-shopname{font-size:10px; opacity:.6; border-top:1px solid #cbbfa0; padding-top:4px; margin-top:2px;}
   #cardReceipt .cr-clear, #invoiceReceipt .cr-clear{clear:both;}
@@ -339,7 +339,7 @@
     <button class="sidebar-close" onclick="closeSidebar()">✕</button>
   </div>
   <div class="sidebar-section-label">Parties (Jaldi Dekhein)</div>
-  <div class="sidebar-link" onclick="goToPartiesFilter('all')"><span class="sl-icon">👥</span> Sub Parties <span class="sl-badge" id="sbAllCount">0</span></div>
+  <div class="sidebar-link" onclick="goToPartiesFilter('all')"><span class="sl-icon">👥</span> All Parties <span class="sl-badge" id="sbAllCount">0</span></div>
   <div class="sidebar-link" onclick="goToPartiesFilter('receivable')"><span class="sl-icon">📌</span> You'll Get <span class="sl-badge" id="sbReceivableCount">0</span></div>
   <div class="sidebar-link" onclick="goToPartiesFilter('payable')"><span class="sl-icon">🤝</span> You'll Give <span class="sl-badge" id="sbPayableCount">0</span></div>
   <div class="sidebar-section-label">More Features</div>
@@ -489,6 +489,12 @@
       <div class="card">
         <div id="allPartyRows" style="max-height:280px; overflow-y:auto;"></div>
         <button class="btn btn-outline-teal btn-block btn-sm" style="margin-top:10px;" onclick="downloadAllPartyCSV()">⬇ Google Sheet (CSV) Download</button>
+      </div>
+
+      <div class="section-title">Party Statements (Vyapar Style)</div>
+      <div class="card">
+        <div style="font-size:12px; opacity:.6; margin-bottom:10px;">Har party ki full statement — PDF / CSV download karein</div>
+        <div id="partyStatementsList" style="max-height:420px; overflow-y:auto;"></div>
       </div>
     </div>
 
@@ -2712,22 +2718,26 @@ function renderPartiesList(){
   box.innerHTML = filtered.map(p=>{
     const b = partyBalance(p.id);
     const payable = isPayable(p);
-    let stampHtml;
-    if(b.overpaid>0) stampHtml = `<span class="stamp" style="color:var(--gold); border-color:var(--gold);">Extra ${fmtMoney(b.overpaid)}</span>`;
-    else if(b.balance<=0) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">${payable?'Ada Ho Gaya':'Paid'}</span>`;
-    else if(payable) stampHtml = `<span class="stamp" style="color:var(--teal); border-color:var(--teal);">Dena ${fmtMoney(b.balance)}</span>`;
-    else stampHtml = `<span class="stamp plain" style="color:var(--brick);">${fmtMoney(b.balance)}</span>`;
+    let amountHtml;
+    if(b.overpaid>0){
+      amountHtml = `<div style="text-align:right;"><div class="mono" style="font-weight:800; font-size:15px; color:var(--gold);">Extra ${fmtMoney(b.overpaid)}</div>${p.dateAdded?`<div style="font-size:11px; opacity:.55; margin-top:2px;">${fmtDate(p.dateAdded)}</div>`:''}</div>`;
+    } else if(b.balance<=0){
+      amountHtml = `<div style="text-align:right;"><div class="mono" style="font-weight:800; font-size:15px; color:var(--teal);">${payable?'Ada Ho Gaya':'Paid'}</div>${p.dateAdded?`<div style="font-size:11px; opacity:.55; margin-top:2px;">${fmtDate(p.dateAdded)}</div>`:''}</div>`;
+    } else if(payable){
+      amountHtml = `<div style="text-align:right;"><div class="mono" style="font-weight:800; font-size:15px; color:var(--teal);">${fmtMoney(b.balance)}</div>${p.dateAdded?`<div style="font-size:11px; opacity:.55; margin-top:2px;">${fmtDate(p.dateAdded)}</div>`:''}</div>`;
+    } else {
+      amountHtml = `<div style="text-align:right;"><div class="mono" style="font-weight:800; font-size:15px; color:var(--brick);">${fmtMoney(b.balance)}</div>${p.dateAdded?`<div style="font-size:11px; opacity:.55; margin-top:2px;">${fmtDate(p.dateAdded)}</div>`:''}</div>`;
+    }
     return `<div class="party-item" onclick="openParty(${p.id})">
       <div class="row-between" style="align-items:flex-start;">
         <div>
           <div class="pname">${p.name}</div>
           <div class="pmeta">${p.item||''} · ${fmtMoney(p.totalAmount)}</div>
           ${p.phone ? `<div class="pmeta">📞 ${p.phone}</div>` : ''}
-          ${p.dateAdded ? `<div class="pmeta">🗓️ Party add ki: ${fmtDate(p.dateAdded)}</div>` : ''}
         </div>
         <div style="display:flex; align-items:flex-start; gap:8px;">
           ${p.atRisk ? `<span class="stamp" style="color:var(--brick); border-color:var(--brick);">🚩 At Risk</span>` : ''}
-          ${stampHtml}
+          ${amountHtml}
           <button class="icon-btn" title="Party edit karein" onclick="event.stopPropagation(); openEditPartyModal(${p.id})">✏️</button>
         </div>
       </div>
@@ -2948,6 +2958,39 @@ function renderReports(){
       const paid = b.balance<=0;
       return `<div class="ledger-row"><span>${p.name}</span><span class="mono" style="font-weight:700; color:${paid?'var(--teal)':'var(--brick)'};">${paid?'Paid':fmtMoney(b.balance)}</span></div>`;
     }).join('');
+  }
+
+  // Vyapar-style per-party statements: each party with balance + PDF/CSV buttons
+  const stmtBox = document.getElementById('partyStatementsList');
+  if(stmtBox){
+    if(parties.length===0){
+      stmtBox.innerHTML = '<div class="empty">No parties yet.</div>';
+    } else {
+      stmtBox.innerHTML = parties.map(p=>{
+        const b = partyBalance(p.id);
+        const paid = b.balance<=0;
+        const payCount = payments.filter(x=>x.partyId===p.id).length;
+        return `<div class="party-item" style="cursor:default; margin-bottom:10px;">
+          <div class="row-between" style="align-items:flex-start; margin-bottom:8px;">
+            <div>
+              <div class="pname">${p.name}</div>
+              <div class="pmeta">${p.item||''} · ${fmtMoney(p.totalAmount)} · ${payCount} payments</div>
+              ${p.phone ? `<div class="pmeta">📞 ${p.phone}</div>` : ''}
+              ${p.dateAdded ? `<div class="pmeta">🗓️ ${fmtDate(p.dateAdded)}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+              <div class="mono" style="font-weight:800; font-size:15px; color:${paid?'var(--teal)':'var(--brick)'};">${paid?'Paid':fmtMoney(b.balance)}</div>
+              <div style="font-size:11px; opacity:.55; margin-top:2px;">Recovery ${fmtMoney(b.totalPaid)}</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline-teal btn-sm" style="flex:1;" onclick="openParty(${p.id})">👁 Open</button>
+            <button class="btn btn-outline-teal btn-sm" style="flex:1;" onclick="downloadPartyPDF(${p.id})">📄 PDF</button>
+            <button class="btn btn-outline-teal btn-sm" style="flex:1;" onclick="downloadPartyCSV(${p.id})">📊 CSV</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
   }
 
   renderWeekBarChart();
